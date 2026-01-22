@@ -1,0 +1,45 @@
+# ===== Python virtual environments =====
+.venv/
+venv/
+env/
+
+# ===== Python cache =====
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# ===== Distribution / packaging =====
+build/
+dist/
+*.egg-info/
+
+# ===== Logs =====
+*.log
+
+# ===== OS files =====
+.DS_Store
+Thumbs.db
+
+# ===== IDE / Editor =====
+.vscode/
+.idea/
+*.swp
+
+# ===== Environment variables =====
+.env
+
+# ===== Jupyter =====
+.ipynb_checkpoints/
+
+# ===== Test / coverage =====
+.coverage
+htmlcov/
+.pytest_cache/
+
+
+
+### we also don't wanna commit the data to the repository
+### it's pretty havy and commiting it is pretty much useless
+
+data/
