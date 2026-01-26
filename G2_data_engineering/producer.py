@@ -1,6 +1,6 @@
 import time
 import pandas as pd
-from db import get_connection
+from test_db_connection import get_connection
 
 TXT_PATH = "data/household_power_consumption.txt"
 SLEEP_SECONDS = 2

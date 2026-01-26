@@ -1,2 +1,5 @@
-psycopg2-binary
 pandas
+scikit-learn
+matplotlib
+joblib
+psycopg2-binary
