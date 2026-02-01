@@ -14,4 +14,4 @@ COPY . .
 
 RUN mkdir -p models docs
 
-CMD ["python", "train_model.py"]
+CMD ["python", "-m", "src.scoring_engine", "--mode", "continuous"]
