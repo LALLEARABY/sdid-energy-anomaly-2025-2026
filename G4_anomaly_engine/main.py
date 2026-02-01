@@ -8,7 +8,7 @@ from G4_anomaly_engine.preprocessing.transform import load_g3_params, preprocess
 from G4_anomaly_engine.modeling.train import train_isolation_forest
 from G4_anomaly_engine.modeling.score import score_batch
 from G4_anomaly_engine.modeling.roi import calculate_roi, print_roi_report
-from G4_anomaly_engine.data_access.update_db import update_anomaly_flags
+from data_access.fetch_data import update_anomaly_flags
 import joblib
 import time
 import logging
