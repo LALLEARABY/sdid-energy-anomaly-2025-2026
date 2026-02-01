@@ -1,0 +1,26 @@
+# G4 - Moteur de Détection d'Anomalies et ROI
+# Dependencies for Anomaly Detection Engine
+
+# Database
+psycopg2-binary==2.9.9
+SQLAlchemy==2.0.23
+
+# Data Processing
+pandas==2.1.4
+numpy==1.26.2
+
+# Machine Learning
+scikit-learn==1.3.2
+
+# Visualization (for analysis)
+matplotlib==3.8.2
+seaborn==0.13.0
+
+# Configuration
+python-dotenv==1.0.0
+
+# Logging
+colorlog==6.8.0
+
+# Job Scheduling (for periodic scoring)
+schedule==1.2.0
