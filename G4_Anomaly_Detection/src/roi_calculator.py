@@ -1,13 +1,14 @@
 """
 G4 - ROI Calculator Module
 Calculates Return on Investment for anomaly detection system
+UPDATED: Matches actual database schema
 """
 
 import pandas as pd
 import numpy as np
 import logging
 from datetime import datetime, timedelta
-from src.database import DatabaseConnection
+from src.database_updated import DatabaseConnection
 from config.config import Config
 
 logging.basicConfig(level=logging.INFO)
@@ -59,7 +60,7 @@ class ROICalculator:
                 is_anomaly,
                 anomaly_score
             FROM power_consumption
-            WHERE scored_at IS NOT NULL
+            WHERE anomaly_score IS NOT NULL
             """
             
             if start_date:
@@ -121,7 +122,7 @@ class ROICalculator:
                 'potential_savings_cost': 0
             }
         
-        # Average power during anomalies (already in kW)
+        # Average power during anomalies (in kW)
         avg_anomaly_power = anomaly_records['global_active_power_kw'].mean()
         
         # Assume each anomaly lasts 1 hour on average if not corrected

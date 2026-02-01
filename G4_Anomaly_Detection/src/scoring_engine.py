@@ -1,6 +1,7 @@
 """
 G4 - Real-Time Scoring Engine
 Consumer script that scores new data and updates the database
+UPDATED: Matches actual database schema
 """
 
 import time
@@ -102,7 +103,7 @@ class ScoringEngine:
             # Prepare updates for database
             updates = []
             for idx, (score, flag) in enumerate(zip(anomaly_scores, is_anomaly)):
-                record_id = df.iloc[idx]['id']
+                record_id = int(df.iloc[idx]['id'])  # Convertir en int Python
                 updates.append((record_id, float(score), bool(flag)))
             
             # Update database
@@ -117,13 +118,19 @@ class ScoringEngine:
                 logger.warning(f"⚠ ANOMALIES DETECTED: {sum(is_anomaly)}/{len(df)} records")
                 anomaly_records = df[is_anomaly]
                 for _, record in anomaly_records.iterrows():
-                    logger.warning(f"  → ID {record['id']}: ts={record['ts']}, "
-                                 f"power={record.get('global_active_power_kw', 'N/A'):.3f} kW")
+                    logger.warning(
+                        f"  → ID {record['id']}: "
+                        f"ts={record['ts']}, "
+                        f"power={record.get('global_active_power_kw', 'N/A'):.2f} kW, "
+                        f"voltage={record.get('voltage_v', 'N/A'):.1f} V"
+                    )
             
             return len(df)
         
         except Exception as e:
             logger.error(f"Error scoring batch: {e}")
+            import traceback
+            traceback.print_exc()
             return 0
     
     def run_continuous(self, interval=None):

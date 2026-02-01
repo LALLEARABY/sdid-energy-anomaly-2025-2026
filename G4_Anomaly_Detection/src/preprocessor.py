@@ -1,6 +1,7 @@
 """
 G4 - Data Preprocessing Module
 Synchronizes with G3 normalization parameters and PCA axes
+UPDATED: Matches actual database schema with _kw, _v, _a, _wh suffixes
 """
 
 import numpy as np
@@ -21,7 +22,16 @@ class DataPreprocessor:
     def __init__(self):
         self.scaler = None
         self.pca = None
-        self.feature_columns = None
+        # Noms de colonnes EXACTS de la base de données
+        self.feature_columns = [
+            'global_active_power_kw',
+            'global_reactive_power_kw',
+            'voltage_v',
+            'global_intensity_a',
+            'sub_metering_1_wh',
+            'sub_metering_2_wh',
+            'sub_metering_3_wh'
+        ]
         self.g3_params_loaded = False
     
     def load_g3_parameters(self, scaler_path='models/g3_scaler.pkl', pca_path='models/g3_pca.pkl'):
@@ -63,11 +73,6 @@ class DataPreprocessor:
         """
         self.scaler = StandardScaler()
         self.pca = PCA(n_components=3, random_state=42)
-        self.feature_columns = [
-            'global_active_power_kw', 'global_reactive_power_kw', 
-            'voltage_v', 'global_intensity_a', 
-            'sub_metering_1_wh', 'sub_metering_2_wh', 'sub_metering_3_wh'
-        ]
         logger.warning("⚠ Using default parameters - synchronize with G3 for production!")
     
     def fit_default(self, data):
@@ -81,13 +86,7 @@ class DataPreprocessor:
             logger.warning("G3 parameters already loaded. Skipping fit.")
             return
         
-        if self.feature_columns is None:
-            self.feature_columns = [
-                'global_active_power_kw', 'global_reactive_power_kw', 
-                'voltage_v', 'global_intensity_a', 
-                'sub_metering_1_wh', 'sub_metering_2_wh', 'sub_metering_3_wh'
-            ]
-        
+        # Select features - gestion des NaN
         X = data[self.feature_columns].fillna(0)
         
         # Fit scaler
@@ -111,14 +110,6 @@ class DataPreprocessor:
         """
         if self.scaler is None or self.pca is None:
             raise ValueError("Preprocessor not initialized. Load G3 parameters first.")
-        
-        # Ensure feature columns exist
-        if self.feature_columns is None:
-            self.feature_columns = [
-                'global_active_power_kw', 'global_reactive_power_kw', 
-                'voltage_v', 'global_intensity_a', 
-                'sub_metering_1_wh', 'sub_metering_2_wh', 'sub_metering_3_wh'
-            ]
         
         # Select features and handle missing values
         X = data[self.feature_columns].fillna(0)
@@ -178,15 +169,15 @@ if __name__ == "__main__":
     if not preprocessor.load_g3_parameters():
         logger.info("Testing with default parameters...")
         
-        # Create sample data for testing
+        # Create sample data for testing with EXACT column names
         sample_data = pd.DataFrame({
-            'global_active_power_kw': np.random.rand(100),
-            'global_reactive_power_kw': np.random.rand(100),
+            'global_active_power_kw': np.random.rand(100) * 5,
+            'global_reactive_power_kw': np.random.rand(100) * 0.5,
             'voltage_v': 240 + np.random.rand(100) * 10,
-            'global_intensity_a': np.random.rand(100) * 5,
-            'sub_metering_1_wh': np.random.rand(100),
-            'sub_metering_2_wh': np.random.rand(100),
-            'sub_metering_3_wh': np.random.rand(100)
+            'global_intensity_a': np.random.rand(100) * 20,
+            'sub_metering_1_wh': np.random.rand(100) * 30,
+            'sub_metering_2_wh': np.random.rand(100) * 30,
+            'sub_metering_3_wh': np.random.rand(100) * 20
         })
         
         preprocessor.fit_default(sample_data)

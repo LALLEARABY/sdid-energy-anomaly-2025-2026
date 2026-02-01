@@ -1,7 +1,6 @@
 """
 G4 - Database Connection Module
 Handles PostgreSQL connection and data retrieval
-UPDATED: Matches actual database schema with ts, _kw, _v, _a, _wh suffixes
 """
 
 import psycopg2
@@ -50,26 +49,10 @@ class DatabaseConnection:
             pd.DataFrame: Historical power consumption data
         """
         try:
-            query = """
-            SELECT 
-                id, ts, 
-                global_active_power_kw, 
-                global_reactive_power_kw, 
-                voltage_v, 
-                global_intensity_a, 
-                sub_metering_1_wh, 
-                sub_metering_2_wh, 
-                sub_metering_3_wh,
-                is_anomaly,
-                anomaly_score,
-                scored_at
-            FROM power_consumption 
-            WHERE anomaly_score IS NULL OR is_anomaly = FALSE
-            ORDER BY ts ASC
-            """
+            query = "SELECT * FROM power_consumption WHERE is_anomaly = FALSE OR anomaly_score IS NULL"
             
             if limit:
-                query += f" LIMIT {limit}"
+                query += f" ORDER BY ts DESC LIMIT {limit}"
             
             df = pd.read_sql(query, self.engine)
             logger.info(f"✓ Retrieved {len(df)} historical records")
@@ -91,17 +74,8 @@ class DatabaseConnection:
         """
         try:
             query = f"""
-            SELECT 
-                id, ts, 
-                global_active_power_kw, 
-                global_reactive_power_kw, 
-                voltage_v, 
-                global_intensity_a, 
-                sub_metering_1_wh, 
-                sub_metering_2_wh, 
-                sub_metering_3_wh
-            FROM power_consumption 
-            WHERE anomaly_score IS NULL 
+            SELECT * FROM power_consumption 
+            WHERE scored_at IS NULL 
             ORDER BY ts ASC 
             LIMIT {batch_size}
             """
@@ -136,9 +110,7 @@ class DatabaseConnection:
             
             update_query = """
             UPDATE power_consumption 
-            SET anomaly_score = %s, 
-                is_anomaly = %s,
-                scored_at = NOW()
+            SET anomaly_score = %s, is_anomaly = %s, scored_at = NOW() 
             WHERE id = %s
             """
             
@@ -168,9 +140,9 @@ class DatabaseConnection:
                 SUM(CASE WHEN is_anomaly = TRUE THEN 1 ELSE 0 END) as total_anomalies,
                 AVG(CASE WHEN is_anomaly = TRUE THEN 1.0 ELSE 0.0 END) * 100 as anomaly_rate,
                 MIN(ts) as first_record,
-                MAX(ts) as last_record,
-                COUNT(CASE WHEN anomaly_score IS NOT NULL THEN 1 END) as scored_records
+                MAX(ts) as last_record
             FROM power_consumption
+            WHERE scored_at IS NOT NULL
             """
             
             df = pd.read_sql(query, self.engine)
@@ -200,6 +172,5 @@ if __name__ == "__main__":
         db.test_connection()
         stats = db.get_anomaly_statistics()
         print("\nDatabase Statistics:")
-        for key, value in stats.items():
-            print(f"  {key}: {value}")
+        print(stats)
         db.disconnect()
