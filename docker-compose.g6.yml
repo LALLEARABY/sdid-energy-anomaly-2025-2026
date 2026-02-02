@@ -1,34 +1,32 @@
-﻿name: sdid-energy-anomaly-2025-2026-g6
+﻿name: sdid-g6
 
 services:
   db:
     image: postgres:15-alpine
-    container_name: sdid_postgres_g6
     restart: unless-stopped
     env_file:
       - .env
     environment:
       POSTGRES_HOST_AUTH_METHOD: md5
     ports:
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - backend
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sdid_user -d sdid_db"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       timeout: 5s
       retries: 5
     security_opt:
       - no-new-privileges:true
-    cap_drop:
-      - ALL
 
 networks:
   backend:
-    name: sdid_backend_g6
+    name: sdid_g6_backend
     driver: bridge
 
 volumes:
   postgres_data:
+    name: sdid_g6_postgres_data
