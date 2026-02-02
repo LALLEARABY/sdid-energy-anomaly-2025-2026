@@ -1,0 +1,49 @@
+# ===================================================
+# REQUIREMENTS.TXT - Dashboard G5
+# Dépendances Python pour le Dashboard Web Interactif
+# SDID 2025/2026
+# ===================================================
+
+# Framework Web
+Flask==3.0.0
+
+# Base de Données
+psycopg2-binary==2.9.9
+
+# Traitement de Données
+pandas==2.1.4
+numpy==1.24.3
+
+# Visualisation (pour génération de graphiques côté serveur si nécessaire)
+plotly==5.18.0
+
+# Variables d'Environnement
+python-dotenv==1.0.0
+
+# Utilitaires
+Werkzeug==3.0.1
+
+# ===================================================
+# INSTALLATION :
+#
+# Windows (avec --break-system-packages) :
+# pip install -r requirements.txt --break-system-packages
+#
+# Linux/Mac :
+# pip install -r requirements.txt
+#
+# Avec environnement virtuel (recommandé) :
+# python -m venv venv
+# source venv/bin/activate  # Linux/Mac
+# venv\Scripts\activate     # Windows
+# pip install -r requirements.txt
+# ===================================================
+
+# ===================================================
+# NOTES :
+# - Flask 3.0.0 : Framework web principal
+# - psycopg2-binary : Connexion PostgreSQL (G2)
+# - pandas : Manipulation de données (optionnel)
+# - plotly : Génération graphiques (optionnel côté serveur)
+# - python-dotenv : Gestion variables .env
+# ===================================================

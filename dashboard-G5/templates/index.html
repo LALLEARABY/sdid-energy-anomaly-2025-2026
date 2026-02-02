@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDID Energy Monitor - Real-Time Dashboard</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Plotly -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <!-- Alert Banner (Anomaly Detection) -->
+    <div id="alertBanner" class="alert-banner" style="display: none;">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <i class="fas fa-exclamation-triangle fa-2x pulse-icon"></i>
+                </div>
+                <div class="col">
+                    <h4 class="mb-0">⚠️ ANOMALIE DÉTECTÉE</h4>
+                    <p class="mb-0" id="alertMessage">Consommation anormale détectée dans le système</p>
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-light btn-sm" onclick="dismissAlert()">
+                        <i class="fas fa-times"></i> Ignorer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h1 class="header-title">
+                        <i class="fas fa-bolt"></i> SDID ENERGY MONITOR
+                    </h1>
+                    <p class="header-subtitle">Surveillance Énergétique en Temps Réel</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <div class="status-indicator">
+                        <span class="status-dot"></span>
+                        <span id="liveStatus">SYSTÈME ACTIF</span>
+                    </div>
+                    <div class="last-update">
+                        Dernière mise à jour : <span id="lastUpdate">--:--:--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard -->
+    <main class="dashboard-main">
+        <div class="container-fluid">
+
+            <!-- KPI Cards -->
+            <div class="row mb-4">
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="kpi-card kpi-primary">
+                        <div class="kpi-icon">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3 id="totalRecords">0</h3>
+                            <p>Total Enregistrements</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="kpi-card kpi-warning">
+                        <div class="kpi-icon">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3 id="totalAnomalies">0</h3>
+                            <p>Anomalies Détectées</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="kpi-card kpi-success">
+                        <div class="kpi-icon">
+                            <i class="fas fa-plug"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3 id="avgPower">0.00</h3>
+                            <p>Puissance Moyenne (kW)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="kpi-card kpi-info">
+                        <div class="kpi-icon">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3 id="avgVoltage">0.00</h3>
+                            <p>Tension Moyenne (V)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row 1 -->
+            <div class="row mb-4">
+                <div class="col-lg-8 mb-3">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3><i class="fas fa-chart-line"></i> Puissance Active en Temps Réel</h3>
+                            <span class="chart-badge">Live</span>
+                        </div>
+                        <div id="powerChart" class="chart-container"></div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 mb-3">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3><i class="fas fa-wave-square"></i> Tension</h3>
+                        </div>
+                        <div id="voltageChart" class="chart-container-small"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row 2 -->
+            <div class="row mb-4">
+                <div class="col-lg-6 mb-3">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3><i class="fas fa-tachometer-alt"></i> Intensité Globale</h3>
+                        </div>
+                        <div id="intensityChart" class="chart-container-small"></div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6 mb-3">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3><i class="fas fa-chart-pie"></i> Sous-Compteurs</h3>
+                        </div>
+                        <div id="submeteringChart" class="chart-container-small"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Alerts Table -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3><i class="fas fa-bell"></i> Alertes d'Anomalies Récentes</h3>
+                            <span class="chart-badge badge-danger" id="anomalyCount">0 alertes</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-dark table-hover">
+                                <thead>
+                                    <tr>
+                                        <th><i class="fas fa-clock"></i> Timestamp</th>
+                                        <th><i class="fas fa-bolt"></i> Puissance (kW)</th>
+                                        <th><i class="fas fa-wave-square"></i> Tension (V)</th>
+                                        <th><i class="fas fa-star"></i> Score</th>
+                                        <th><i class="fas fa-flag"></i> Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="anomaliesTable">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">
+                                            Aucune anomalie détectée pour le moment...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-0">
+                        <i class="fas fa-graduation-cap"></i>
+                        SDID 2025/2026 - Groupe G5 : Dashboarding Web Interactif
+                    </p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p class="mb-0">
+                        <i class="fas fa-code"></i>
+                        Powered by Flask + PostgreSQL + Plotly
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+
+</body>
+</html>

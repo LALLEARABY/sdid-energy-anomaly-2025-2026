@@ -43,6 +43,7 @@ htmlcov/
 ### it's pretty havy and commiting it is pretty much useless
 
 data/
+<<<<<<< HEAD
 # === Secrets / env ===
 .env
 .env.*
@@ -69,5 +70,18 @@ G4_Anomaly_Detection/Dockerfile
 
 # --- G6 local-only ---
 _backup_g6/
+=======
+# --- G6 security ---
+.env
+*.env
+.env.*
+
+
+# --- local backups (G6) ---
+_backup_g6/
+
+
+# --- ignore other groups accidental files ---
+>>>>>>> origin/main
 G4_Anomaly_Detection/Dockerfile
 

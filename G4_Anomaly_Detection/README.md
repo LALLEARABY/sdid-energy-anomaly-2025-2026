@@ -54,6 +54,42 @@ G4_Anomaly_Detection/
 
 ## 🚀 Installation
 
+
+
+
+---
+
+## 🐳 Utilisation avec Docker
+
+### Démarrage rapide
+```bash
+# Depuis la racine du projet
+docker-compose up -d g4_anomaly_detection
+
+# Vérifier les logs
+docker logs -f g4_anomaly_detection
+
+# Voir les statistiques
+docker exec -it sdid_postgres psql -U sdid_user -d sdid_db -c "SELECT COUNT(*) as total, SUM(CASE WHEN is_anomaly THEN 1 ELSE 0 END) as anomalies FROM power_consumption;"
+```
+
+### Services Docker disponibles
+
+- **g4_anomaly_detection** : Scoring engine en mode continu
+- **g4_roi** : Calculateur de ROI (lancer avec `docker-compose run --rm g4_roi`)
+
+### Variables d'environnement Docker
+
+Les variables sont configurées dans `docker-compose.yml` :
+- `DB_HOST=db` (nom du service PostgreSQL)
+- `DB_PORT=5432`
+- `ANOMALY_THRESHOLD=-0.5468`
+- `SCORING_INTERVAL=60`
+
+
+
+
+
 ### 1. Prérequis
 
 - Python 3.8+
@@ -199,9 +235,19 @@ Le système fournit les métriques suivantes (transmises à G1) :
 ### Exemples de résultats
 
 ```
-Total records analyzed:    50,000
-Anomalies detected:        1,250
-Anomaly rate:              2.50%
+Total records analyzed:    5,000
+Anomalies detected:        ~300
+Anomaly rate:              ~6%
+
+Anomaly threshold:         -0.5468 (5th percentile)
+
+
+Top anomalies detected:
+- Overconsumption: 5.4-5.9 kW (vs normal 2-4 kW)
+- Underconsumption: 1.0-1.6 kW
+- Voltage anomalies: 235-245 V (vs normal 220-240 V)
+
+
 
 Energy cost savings:       $1,875.00
 Value of prevention:       $218,750.00
@@ -280,10 +326,11 @@ Payback period:            18 days
 
 **Groupe 4 - SDID 2025/2026**
 
-- [Membre 1] - Développement du modèle Isolation Forest
-- [Membre 2] - Moteur de scoring temps réel
-- [Membre 3] - Calcul du ROI et métriques financières
-
+- [2309 23644 23658] - Lead Developer
+  - Développement du modèle Isolation Forest
+  - Moteur de scoring temps réel
+  - Calcul du ROI et métriques financières
+  - Intégration Docker et CI/CD
 ---
 
 ## 📚 Références

@@ -13,8 +13,31 @@ services:
     volumes:
       - ./G2_data_engineering/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sdid_user -d sdid_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  g4_anomaly_detection:
+    build:
+      context: ./G4_Anomaly_Detection
+      dockerfile: Dockerfile
+    container_name: g4_anomaly_detection
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: sdid_db
+      DB_USER: sdid_user
+      DB_PASSWORD: sdid_password
+    volumes:
+      - ./G4_Anomaly_Detection:/app
+      - g4_models:/app/models
 
 volumes:
   postgres_data:
-
-
+  g4_models:
