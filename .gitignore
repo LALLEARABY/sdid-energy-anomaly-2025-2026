@@ -61,3 +61,8 @@ Thumbs.db
 .vscode/
 .idea/
 
+
+# --- G6 local-only ---
+_backup_g6/
+G4_Anomaly_Detection/Dockerfile
+
