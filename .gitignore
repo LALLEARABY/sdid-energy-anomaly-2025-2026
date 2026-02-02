@@ -43,3 +43,21 @@ htmlcov/
 ### it's pretty havy and commiting it is pretty much useless
 
 data/
+# === Secrets / env ===
+.env
+.env.*
+!.env.example
+
+# === Docker / local volumes ===
+**/postgres_data/
+**/pgdata/
+**/.docker/
+docker-data/
+*.log
+
+# === OS / IDE ===
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+

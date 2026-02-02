@@ -1,0 +1,5 @@
+﻿networks:
+  backend:
+    name: sdid_g6_backend
+    driver: bridge
+    internal: true
