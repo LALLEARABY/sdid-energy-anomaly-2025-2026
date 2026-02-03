@@ -1,6 +1,6 @@
-G6 – DevOps (Docker / Compose / Sécurité / Environnement / Réseaux)
+# G6 – DevOps (Docker / Compose / Sécurité / Environnement / Réseaux)
 
-1) Rôle du groupe G6
+## 1) Rôle du groupe G6
 
 Le groupe G6 est responsable de la partie DevOps du projet.
 Son rôle est d’assurer une exécution fiable, sécurisée et reproductible à l’aide de Docker et Docker Compose, ainsi qu’une gestion propre des variables d’environnement, des réseaux et des bonnes pratiques de sécurité.
