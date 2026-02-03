@@ -1,5 +1,15 @@
-# Groupe 7 - Analyse de Dérive
+# Groupe 7 – Drift Detection
 
-## Responsable : 23656 et 23634
+Objectif :
+Détecter la dérive des données dans le temps afin de décider du ré-entraînement des modèles.
 
-Ce dossier contient le code pour la surveillance long-terme du système.
+Méthodes :
+- Population Stability Index (PSI)
+- Kolmogorov-Smirnov Test (KS)
+
+Pipeline :
+PostgreSQL → Extraction → Baseline vs Current → PSI / KS → Rapport
+
+Sorties :
+- outputs/psi_scores.csv
+- outputs/drift_report.json

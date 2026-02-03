@@ -1,0 +1,90 @@
+﻿name: sdid-energy-anomaly-2025-2026-g6
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./config/postgres_security.sql:/docker-entrypoint-initdb.d/10_postgres_security.sql:ro
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U  -d "]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+
+  # ================
+  # Optional services (templates)
+  # ================
+
+  ingestion:
+    profiles: ["full"]
+    build:
+      context: ../G2_data_engineering
+      dockerfile: ../G6-devops/Dockerfile.ingestion
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  analysis:
+    profiles: ["full"]
+    build:
+      context: ../G4_Anomaly_Detection
+      dockerfile: ../G6-devops/Dockerfile.analysis
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  dashboard:
+    profiles: ["full"]
+    build:
+      context: ../dashboard-G5
+      dockerfile: ../G6-devops/Dockerfile.dashboard
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - ":8000:8000"
+    networks:
+      - backend
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  backend:
+    name: sdid_g6_backend
+    driver: bridge
+    internal: true
+
+volumes:
+  postgres_data:
+    name: sdid_g6_postgres_data
