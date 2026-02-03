@@ -1,4 +1,4 @@
-﻿name: sdid-energy-anomaly-2025-2026-g6
+name: sdid-energy-anomaly-2025-2026-g6
 
 services:
   db:
@@ -6,10 +6,6 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5434:5432"
     volumes:
@@ -18,16 +14,12 @@ services:
     networks:
       - backend
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U  -d "]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       timeout: 5s
       retries: 5
     security_opt:
       - no-new-privileges:true
-
-  # ================
-  # Optional services (templates)
-  # ================
 
   ingestion:
     profiles: ["full"]
@@ -72,7 +64,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - ":8000:8000"
+      - "8000:8000"
     networks:
       - backend
     restart: unless-stopped
@@ -81,10 +73,8 @@ services:
 
 networks:
   backend:
-    name: sdid_g6_backend
     driver: bridge
     internal: true
 
 volumes:
   postgres_data:
-    name: sdid_g6_postgres_data
