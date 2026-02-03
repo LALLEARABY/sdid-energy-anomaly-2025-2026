@@ -1,8 +1,0 @@
-# Fichiers temporaires
-__pycache__/
-*.pyc
-
-# Données locales
-local_data/
-*.pkl
-*.csv
