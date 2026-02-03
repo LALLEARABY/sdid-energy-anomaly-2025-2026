@@ -5,7 +5,7 @@
 Le groupe G6 est responsable de la partie DevOps du projet.
 Son rôle est d’assurer une exécution fiable, sécurisée et reproductible à l’aide de Docker et Docker Compose, ainsi qu’une gestion propre des variables d’environnement, des réseaux et des bonnes pratiques de sécurité.
 
-2) Objectifs
+## 2) Objectifs
 
 Créer une configuration Docker Compose dédiée au projet (G6)
 
@@ -17,11 +17,11 @@ Sécuriser le déploiement (permissions, no-new-privileges, initialisation SQL)
 
 Permettre un lancement minimal (base de données uniquement) ou un lancement full stack optionnel via les profiles
 
-3) Architecture (Compose G6)
+## 3) Architecture (Compose G6)
 
 Le fichier principal du groupe G6 est :
 
-✅ G6-devops/docker-compose.yml
+ G6-devops/docker-compose.yml
 
 Il contient :
 
@@ -47,7 +47,7 @@ analysis (G4)
 
 dashboard (G5)
 
-4) Variables d’environnement
+## 4) Variables d’environnement
 
 Fichiers utilisés
 
@@ -69,11 +69,11 @@ DB_PORT=5432
 
 Le fichier .env doit rester local et contenir uniquement des informations sensibles.
 
-5) Sécurité (PostgreSQL)
+## 5) Sécurité (PostgreSQL)
 
 Le groupe G6 ajoute un script SQL de sécurité exécuté automatiquement lors du premier démarrage :
 
-📌 G6-devops/config/postgres_security.sql
+ G6-devops/config/postgres_security.sql
 
 Ce script peut inclure :
 
@@ -83,7 +83,7 @@ La configuration des privilèges
 
 La création de rôles avec des permissions limitées
 
-6) Réseaux (Networks)
+## 6) Réseaux (Networks)
 
 Le groupe G6 utilise un réseau interne dédié :
 
