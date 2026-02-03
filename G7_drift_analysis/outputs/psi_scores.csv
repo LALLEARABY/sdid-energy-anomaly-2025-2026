@@ -1,0 +1,8 @@
+feature,psi,ks_stat,ks_pvalue
+global_active_power_kw,0.0004702562981848254,1.0,3.022869490300458e-124
+global_reactive_power_kw,,,
+voltage_v,0.0,0.08653846153846154,0.41813227514608153
+global_intensity_a,0.00024660237686322504,1.0,3.022869490300458e-124
+sub_metering_1_wh,,,
+sub_metering_2_wh,,,
+sub_metering_3_wh,,,

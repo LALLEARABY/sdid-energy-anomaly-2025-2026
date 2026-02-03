@@ -1,0 +1,54 @@
+{
+  "baseline_file": "data/baseline_dec_2006.csv",
+  "current_file": "data/current_data.csv",
+  "features_checked": [
+    "global_active_power_kw",
+    "global_reactive_power_kw",
+    "voltage_v",
+    "global_intensity_a",
+    "sub_metering_1_wh",
+    "sub_metering_2_wh",
+    "sub_metering_3_wh"
+  ],
+  "results": {
+    "global_active_power_kw": {
+      "psi": 0.0004702562981848254,
+      "ks_stat": 1.0,
+      "ks_pvalue": 3.022869490300458e-124
+    },
+    "global_reactive_power_kw": {
+      "psi": NaN,
+      "ks_stat": NaN,
+      "ks_pvalue": NaN
+    },
+    "voltage_v": {
+      "psi": 0.0,
+      "ks_stat": 0.08653846153846154,
+      "ks_pvalue": 0.41813227514608153
+    },
+    "global_intensity_a": {
+      "psi": 0.00024660237686322504,
+      "ks_stat": 1.0,
+      "ks_pvalue": 3.022869490300458e-124
+    },
+    "sub_metering_1_wh": {
+      "psi": NaN,
+      "ks_stat": NaN,
+      "ks_pvalue": NaN
+    },
+    "sub_metering_2_wh": {
+      "psi": NaN,
+      "ks_stat": NaN,
+      "ks_pvalue": NaN
+    },
+    "sub_metering_3_wh": {
+      "psi": NaN,
+      "ks_stat": NaN,
+      "ks_pvalue": NaN
+    }
+  },
+  "interpretation": {
+    "psi_threshold_alert": 0.25,
+    "psi_threshold_critical": 0.5
+  }
+}
