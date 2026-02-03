@@ -1,43 +1,58 @@
+version: '3.8'
+
 services:
+  # ============================================
+  # SERVICE POSTGRESQL (G2)
+  # ============================================
   db:
     image: postgres:15-alpine
     container_name: sdid_postgres
-    restart: always
     environment:
-      POSTGRES_USER: sdid_user
-      POSTGRES_PASSWORD: sdid_password
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 23654
       POSTGRES_DB: sdid_db
-      POSTGRES_HOST_AUTH_METHOD: md5
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
-      - ./G2_data_engineering/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+      - ./sql/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - sdid_network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sdid_user -d sdid_db"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  g4_anomaly_detection:
+  # ============================================
+  # SERVICE DASHBOARD FLASK (G5)
+  # ============================================
+  dashboard:
     build:
-      context: ./G4_Anomaly_Detection
+      context: ./dashboard
       dockerfile: Dockerfile
-    container_name: g4_anomaly_detection
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
+    container_name: sdid_dashboard
     environment:
       DB_HOST: db
       DB_PORT: 5432
       DB_NAME: sdid_db
-      DB_USER: sdid_user
-      DB_PASSWORD: sdid_password
+      DB_USER: postgres
+      DB_PASSWORD: 23654
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - sdid_network
+    restart: unless-stopped
     volumes:
-      - ./G4_Anomaly_Detection:/app
-      - g4_models:/app/models
+      - ./dashboard:/app
 
 volumes:
   postgres_data:
-  g4_models:
+    driver: local
+
+networks:
+  sdid_network:
+    driver: bridge
