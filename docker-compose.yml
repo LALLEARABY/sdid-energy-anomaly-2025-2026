@@ -40,4 +40,3 @@ volumes:
   postgres_data:
   g4_models:
 
-est-ce que je doit laisser cette fichier dans cette place ou mettre dans reprtoire de g4
