@@ -1,32 +1,118 @@
+version: "3.8"
+
 services:
+  # -------------------------
+  # DB PostgreSQL
+  # -------------------------
   db:
     image: postgres:15-alpine
     container_name: sdid_postgres
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_USER: sdid_user
       POSTGRES_PASSWORD: sdid_password
       POSTGRES_DB: sdid_db
-      POSTGRES_HOST_AUTH_METHOD: md5
     ports:
       - "5433:5432"
     volumes:
-      - ./G2_data_engineering/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+      - ./G2_data_engineering/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql:ro
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sdid_user -d sdid_db"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+    networks:
+      - sdid_network
+
+  # -------------------------
+  # G2 Ingestion (producer)
+  # -------------------------
+  g2_ingestion:
+    image: python:3.11-slim
+    container_name: g2_ingestion
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    working_dir: /app
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: sdid_db
+      DB_USER: sdid_user
+      DB_PASSWORD: sdid_password
+    volumes:
+      - ./G2_data_engineering:/app
+    networks:
+      - sdid_network
+    command: >
+      sh -lc "
+        apt-get update &&
+        apt-get install -y --no-install-recommends unrar-free ca-certificates &&
+        rm -rf /var/lib/apt/lists/* &&
+        pip install --no-cache-dir pandas numpy psycopg2-binary &&
+        mkdir -p data_extracted &&
+        unrar x -o+ data/data.rar data_extracted/ || true &&
+        python producer.py
+      "
+
+  # -------------------------
+  # G3 Data Mining (PCA + DBSCAN) - run once
+  # Copie les artefacts vers shared_models pour G4
+  # -------------------------
+  g3_data_mining:
+    image: python:3.11-slim
+    container_name: g3_data_mining
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+      g2_ingestion:
+        condition: service_started
+    working_dir: /work
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: sdid_db
+      DB_USER: sdid_user
+      DB_PASSWORD: sdid_password
+      PYTHONPATH: /work/G3_data_mining
+    volumes:
+      - ./G3_data_mining:/work/G3_data_mining
+      - shared_models:/shared_models
+    networks:
+      - sdid_network
+    command: >
+      sh -lc "
+        pip install --no-cache-dir pandas numpy scikit-learn matplotlib psycopg2-binary &&
+        python /work/G3_data_mining/main.py &&
+        mkdir -p /shared_models &&
+        cp -f /work/G3_data_mining/artifacts/scaler.pkl /shared_models/g3_scaler.pkl 2>/dev/null || true &&
+        cp -f /work/G3_data_mining/artifacts/pca.pkl /shared_models/g3_pca.pkl 2>/dev/null || true &&
+        cp -f /work/G3_data_mining/artifacts/scaler.joblib /shared_models/g3_scaler.pkl 2>/dev/null || true &&
+        cp -f /work/G3_data_mining/artifacts/pca.joblib /shared_models/g3_pca.pkl 2>/dev/null || true &&
+        cp -f /work/G3_data_mining/artifacts/dbscan_params.json /shared_models/dbscan_params.json 2>/dev/null || true &&
+        cp -f /work/G3_data_mining/artifacts/clusters.json /shared_models/clusters.json 2>/dev/null || true &&
+        ls -lah /shared_models
+      "
+
+  # -------------------------
+  # G4 Détection d'anomalies
+  # ✅ Correction: utilise l'image déjà buildée (pas de pull python:3.10-slim)
+  # ✅ Attends les fichiers G3 avant de démarrer (pas de "Preprocessor not initialized")
+  # -------------------------
   g4_anomaly_detection:
-    build:
-      context: ./G4_Anomaly_Detection
-      dockerfile: Dockerfile
+    image: sdid-energy-anomaly-2025-2026-main-g4_anomaly_detection:latest
     container_name: g4_anomaly_detection
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
+      g2_ingestion:
+        condition: service_started
+      g3_data_mining:
+        condition: service_started
     environment:
       DB_HOST: db
       DB_PORT: 5432
@@ -34,9 +120,85 @@ services:
       DB_USER: sdid_user
       DB_PASSWORD: sdid_password
     volumes:
-      - ./G4_Anomaly_Detection:/app
-      - g4_models:/app/models
+      - shared_models:/app/models
+    networks:
+      - sdid_network
+    command: >
+      sh -lc "
+        echo 'Waiting for G3 artifacts...' ;
+        until [ -f /app/models/g3_scaler.pkl ] && [ -f /app/models/g3_pca.pkl ]; do
+          echo '...still waiting for g3_scaler.pkl and g3_pca.pkl' ;
+          sleep 2 ;
+        done ;
+        echo '✓ G3 artifacts found. Starting G4...' ;
+        exec python -m src.scoring_engine
+      "
+
+  # -------------------------
+  # G5 Dashboard
+  # -------------------------
+  dashboard:
+    image: python:3.11-slim
+    container_name: sdid_dashboard
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    working_dir: /app
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: sdid_db
+      DB_USER: sdid_user
+      DB_PASSWORD: sdid_password
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./dashboard-G5:/app
+    networks:
+      - sdid_network
+    command: >
+      sh -lc "
+        pip install --no-cache-dir -r requierments &&
+        python 'app (1).py'
+      "
+
+  # -------------------------
+  # G7 Drift (simple service)
+  #
+  g7_drift:
+    image: python:3.11-slim
+    container_name: g7_drift_analysis
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    working_dir: /app
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: sdid_db
+      DB_USER: sdid_user
+      DB_PASSWORD: sdid_password
+    volumes:
+      - ./G7_drift:/app
+    networks:
+      - sdid_network
+    command: >
+      sh -lc "
+        pip install --no-cache-dir pandas numpy psycopg2-binary &&
+        if [ -f drift.py ]; then
+          while true; do python drift.py || true; sleep 300; done;
+        else
+          echo 'G7: drift.py not found in /app (service running idle)' ;
+          tail -f /dev/null;
+        fi
+      "
+
+networks:
+  sdid_network:
+    driver: bridge
+
 volumes:
   postgres_data:
-  g4_models:
-
+  shared_models:
