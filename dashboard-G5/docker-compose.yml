@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # SERVICE POSTGRESQL (G2)
+  # ============================================
+  db:
+    image: postgres:15-alpine
+    container_name: sdid_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 23654
+      POSTGRES_DB: sdid_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./sql/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - sdid_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sdid_user -d sdid_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # SERVICE DASHBOARD FLASK (G5)
+  # ============================================
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: sdid_dashboard
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: sdid_db
+      DB_USER: postgres
+      DB_PASSWORD: 23654
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - sdid_network
+    restart: unless-stopped
+    volumes:
+      - ./dashboard:/app
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  sdid_network:
+    driver: bridge
