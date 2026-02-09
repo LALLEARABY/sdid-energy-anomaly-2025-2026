@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # -------------------------
   # DB PostgreSQL
@@ -27,6 +25,7 @@ services:
 
   # -------------------------
   # G2 Ingestion (producer)
+  # Corrected: Fix file path after unrar
   # -------------------------
   g2_ingestion:
     image: python:3.11-slim
@@ -52,14 +51,17 @@ services:
         apt-get install -y --no-install-recommends unrar-free ca-certificates &&
         rm -rf /var/lib/apt/lists/* &&
         pip install --no-cache-dir pandas numpy psycopg2-binary &&
-        mkdir -p data_extracted &&
-        unrar x -o+ data/data.rar data_extracted/ || true &&
+        # Correction: Extract specifically to where the script expects it
+        unrar x -o+ data/data.rar . &&
+        # If extraction created a subfolder 'data', we are good. 
+        # If it didn't, we move it to be sure.
+        if [ -f household_power_consumption.txt ]; then mv household_power_consumption.txt data/; fi &&
         python producer.py
       "
 
   # -------------------------
-  # G3 Data Mining (PCA + DBSCAN) - run once
-  # Copie les artefacts vers shared_models pour G4
+  # G3 Data Mining (PCA + DBSCAN)
+  # Corrected: PYTHONPATH to allow imports
   # -------------------------
   g3_data_mining:
     image: python:3.11-slim
@@ -77,7 +79,8 @@ services:
       DB_NAME: sdid_db
       DB_USER: sdid_user
       DB_PASSWORD: sdid_password
-      PYTHONPATH: /work/G3_data_mining
+      # Correction: PYTHONPATH set to root of work dir so 'G3_data_mining' module is found
+      PYTHONPATH: /work
     volumes:
       - ./G3_data_mining:/work/G3_data_mining
       - shared_models:/shared_models
@@ -98,12 +101,10 @@ services:
       "
 
   # -------------------------
-  # G4 Détection d'anomalies
-  # ✅ Correction: utilise l'image déjà buildée (pas de pull python:3.10-slim)
-  # ✅ Attends les fichiers G3 avant de démarrer (pas de "Preprocessor not initialized")
+  # G4 Anomaly Detection
   # -------------------------
   g4_anomaly_detection:
-    image: sdid-energy-anomaly-2025-2026-main-g4_anomaly_detection:latest
+    image: python:3.11-slim
     container_name: g4_anomaly_detection
     restart: unless-stopped
     depends_on:
@@ -113,6 +114,7 @@ services:
         condition: service_started
       g3_data_mining:
         condition: service_started
+    working_dir: /app
     environment:
       DB_HOST: db
       DB_PORT: 5432
@@ -120,17 +122,19 @@ services:
       DB_USER: sdid_user
       DB_PASSWORD: sdid_password
     volumes:
+      - ./G4_anomaly_detection:/app
       - shared_models:/app/models
     networks:
       - sdid_network
     command: >
       sh -lc "
+        pip install --no-cache-dir pandas numpy scikit-learn psycopg2-binary &&
         echo 'Waiting for G3 artifacts...' ;
         until [ -f /app/models/g3_scaler.pkl ] && [ -f /app/models/g3_pca.pkl ]; do
           echo '...still waiting for g3_scaler.pkl and g3_pca.pkl' ;
-          sleep 2 ;
+          sleep 5 ;
         done ;
-        echo '✓ G3 artifacts found. Starting G4...' ;
+        echo 'G3 artifacts found. Starting G4...' ;
         exec python -m src.scoring_engine
       "
 
@@ -151,6 +155,9 @@ services:
       DB_NAME: sdid_db
       DB_USER: sdid_user
       DB_PASSWORD: sdid_password
+      DASHBOARD_USER: ${DASHBOARD_USER}
+      DASHBOARD_PASS: ${DASHBOARD_PASS}
+      FLASK_SECRET_KEY: ${FLASK_SECRET}
     ports:
       - "5000:5000"
     volumes:
@@ -159,13 +166,13 @@ services:
       - sdid_network
     command: >
       sh -lc "
-        pip install --no-cache-dir -r requierments &&
+        pip install --no-cache-dir -r requierments || pip install --no-cache-dir flask pandas psycopg2-binary plotly &&
         python 'app (1).py'
       "
 
   # -------------------------
-  # G7 Drift (simple service)
-  #
+  # G7 Drift
+  # -------------------------
   g7_drift:
     image: python:3.11-slim
     container_name: g7_drift_analysis
