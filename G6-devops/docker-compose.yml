@@ -1,80 +1,207 @@
-name: sdid-energy-anomaly-2025-2026-g6
+version: "3.9"
 
 services:
   db:
     image: postgres:15-alpine
+    container_name: sdid_postgres
     restart: unless-stopped
     env_file:
       - .env
     ports:
       - "5434:5432"
     volumes:
+      - ./G2_data_engineering/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql:ro
       - postgres_data:/var/lib/postgresql/data
-      - ./config/postgres_security.sql:/docker-entrypoint-initdb.d/10_postgres_security.sql:ro
-    networks:
-      - backend
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
-      retries: 5
-    security_opt:
-      - no-new-privileges:true
+      retries: 10
+    networks:
+      - sdid_network
 
-  ingestion:
-    profiles: ["full"]
-    build:
-      context: ../G2_data_engineering
-      dockerfile: ../G6-devops/Dockerfile.ingestion
-    env_file:
-      - .env
+  # -------------------------
+  # G2 Ingestion
+  # -------------------------
+  g2_ingestion:
+    image: python:3.11-slim
+    container_name: g2_ingestion
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
-    networks:
-      - backend
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-
-  analysis:
-    profiles: ["full"]
-    build:
-      context: ../G4_Anomaly_Detection
-      dockerfile: ../G6-devops/Dockerfile.analysis
     env_file:
       - .env
+    working_dir: /app
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./G2_data_engineering:/app
+    networks:
+      - sdid_network
+    command: >
+      sh -lc "
+        apt-get update &&
+        apt-get install -y --no-install-recommends unrar-free ca-certificates &&
+        rm -rf /var/lib/apt/lists/* &&
+        pip install --no-cache-dir pandas numpy psycopg2-binary &&
+        unrar x -o+ data/data.rar . &&
+        if [ -f household_power_consumption.txt ]; then mv household_power_consumption.txt data/; fi &&
+        python producer.py
+      "
+
+  # -------------------------
+  # G3 Data Mining
+  # -------------------------
+  g3_data_mining:
+    image: python:3.11-slim
+    container_name: g3_data_mining
+    restart: "no"
     depends_on:
       db:
         condition: service_healthy
+      g2_ingestion:
+        condition: service_started
+    env_file:
+      - .env
+    working_dir: /work
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      PYTHONPATH: /work
+    volumes:
+      - ./G3_data_mining:/work/G3_data_mining
+      - shared_models:/shared_models
     networks:
-      - backend
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
+      - sdid_network
+    command: >
+      sh -lc "
+        pip install --no-cache-dir pandas numpy scikit-learn matplotlib psycopg2-binary &&
+        python /work/G3_data_mining/main.py &&
+        mkdir -p /shared_models &&
+        cp -f /work/G3_data_mining/artifacts/* /shared_models/ 2>/dev/null || true &&
+        ls -lah /shared_models
+      "
 
+  # -------------------------
+  # G4 Anomaly Detection
+  # -------------------------
+  g4_anomaly_detection:
+    image: python:3.11-slim
+    container_name: g4_anomaly_detection
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      g2_ingestion:
+        condition: service_started
+      g3_data_mining:
+        condition: service_started
+    env_file:
+      - .env
+    working_dir: /app
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./G4_anomaly_detection:/app
+      - shared_models:/app/models
+    networks:
+      - sdid_network
+    command: >
+      sh -lc "
+        pip install --no-cache-dir pandas numpy scikit-learn psycopg2-binary &&
+        echo 'Waiting for G3 artifacts...' ;
+        until [ -f /app/models/g3_scaler.pkl ] && [ -f /app/models/g3_pca.pkl ]; do
+          echo '...still waiting for g3_scaler.pkl and g3_pca.pkl' ;
+          sleep 5 ;
+        done ;
+        echo 'G3 artifacts found. Starting G4...' ;
+        exec python -m src.scoring_engine
+      "
+
+  # -------------------------
+  # G5 Dashboard
+  # -------------------------
   dashboard:
-    profiles: ["full"]
-    build:
-      context: ../dashboard-G5
-      dockerfile: ../G6-devops/Dockerfile.dashboard
-    env_file:
-      - .env
+    image: python:3.11-slim
+    container_name: sdid_dashboard
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
+    env_file:
+      - .env
+    working_dir: /app
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DASHBOARD_USER: ${DASHBOARD_USER}
+      DASHBOARD_PASS: ${DASHBOARD_PASS}
+      FLASK_SECRET_KEY: ${FLASK_SECRET}
     ports:
-      - "8000:8000"
+      - "5000:5000"
+    volumes:
+      - ./dashboard-G5:/app
     networks:
-      - backend
+      - sdid_network
+    command: >
+      sh -lc "
+        pip install --no-cache-dir -r requirements.txt || pip install --no-cache-dir flask pandas psycopg2-binary plotly &&
+        python app.py
+      "
+
+  # -------------------------
+  # G7 Drift
+  # -------------------------
+  g7_drift:
+    image: python:3.11-slim
+    container_name: g7_drift_analysis
     restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    working_dir: /app
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./G7_drift:/app
+    networks:
+      - sdid_network
+    command: >
+      sh -lc "
+        pip install --no-cache-dir pandas numpy psycopg2-binary &&
+        if [ -f drift.py ]; then
+          while true; do python drift.py || true; sleep 300; done;
+        else
+          echo 'G7: drift.py not found in /app (service running idle)' ;
+          tail -f /dev/null;
+        fi
+      "
 
 networks:
-  backend:
+  sdid_network:
     driver: bridge
-    internal: true
 
 volumes:
   postgres_data:
+  shared_models:
