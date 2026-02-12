@@ -1,17 +1,11 @@
 services:
-  # -------------------------
-  # DB PostgreSQL
-  # -------------------------
   db:
     image: postgres:15-alpine
-    container_name: sdid_postgres
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: sdid_user
-      POSTGRES_PASSWORD: sdid_password
-      POSTGRES_DB: sdid_db
+    env_file:
+      - .env
     ports:
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - ./G2_data_engineering/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql:ro
       - postgres_data:/var/lib/postgresql/data
